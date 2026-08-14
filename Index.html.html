@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>My Ledger</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2316233D%22/><text x=%2250%22 y=%2266%22 font-size=%2255%22 fill=%22%23C9A227%22 text-anchor=%22middle%22 font-family=%22Georgia%22>L</text></svg>">
+<style>
+  :root{
+    --ink:#16233D;
+    --ink-2:#22345A;
+    --parchment:#FAF6EC;
+    --card:#FFFFFF;
+    --emerald:#1F6F5C;
+    --emerald-dim:#E4F0EC;
+    --rust:#A8462E;
+    --rust-dim:#F5E7E2;
+    --gold:#C9A227;
+    --gold-dim:#F7EFD6;
+    --slate:#5B6472;
+    --line:#E4DDCB;
+    --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--parchment);
+    font-family:var(--font-body);
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+  }
+  header.top{
+    background:var(--ink);
+    color:var(--gold);
+    padding:22px 20px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  header.top::after{
+    content:"";
+    position:absolute;
+    left:0;right:0;bottom:0;
+    height:6px;
+    background-image:radial-gradient(circle,var(--parchment) 3px, transparent 3px);
+    background-size:16px 6px;
+    background-position:center;
+  }
+  header.top h1{
+    font-family:var(--font-display);
+    font-size:22px;
+    letter-spacing:0.5px;
+    margin:0;
+    color:#FDF4DA;
+  }
+  header.top p{
+    margin:4px 0 0;
+    font-size:12px;
+    color:#B9C2D6;
+    font-family:var(--font-mono);
+  }
+  main{
+    padding:16px 14px 90px;
+    max-width:520px;
+    margin:0 auto;
+  }
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* Dashboard cards */
+  .totals-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+    overflow-x:auto;
+  }
+  .total-chip{
+    flex:1 0 auto;
+    background:var(--ink);
+    color:#FDF4DA;
+    border-radius:14px;
+    padding:12px 14px;
+    min-width:110px;
+  }
+  .total-chip .lbl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);font-family:var(--font-body);}
+  .total-chip .amt{font-family:var(--font-mono);font-size:16px;margin-top:4px;font-weight:600;}
+
+  .section-title{
+    font-family:var(--font-display);
+    font-size:15px;
+    color:var(--ink);
+    margin:18px 0 8px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:repeating-linear-gradient(90deg,var(--line) 0 5px, transparent 5px 9px);
+  }
+
+  .passbook{
+    background:var(--card);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    box-shadow:0 1px 2px rgba(22,35,61,0.06), 0 1px 0 rgba(22,35,61,0.03);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    border:1px solid #EFE9D8;
+  }
+  .seal{
+    width:44px;height:44px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);
+    font-size:11px;font-weight:700;
+    flex-shrink:0;
+    border:2px dashed;
+  }
+  .seal.LKR{color:var(--emerald);border-color:var(--emerald);background:var(--emerald-dim);}
+  .seal.AED{color:var(--gold);border-color:var(--gold);background:var(--gold-dim);}
+  .seal.CASH{color:var(--rust);border-color:var(--rust);background:var(--rust-dim);}
+  .seal.cash-seal{border-style:solid;}
+  .passbook .info{flex:1;min-width:0;}
+  .passbook .name{font-size:14px;font-weight:600;}
+  .passbook .sub{font-size:11px;color:var(--slate);font-family:var(--font-mono);}
+  .passbook .bal{font-family:var(--font-mono);font-size:15px;font-weight:700;text-align:right;}
+  .passbook .bal.neg{color:var(--rust);}
+
+  .card{
+    background:var(--card);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:10px;
+    border:1px solid #EFE9D8;
+  }
+
+  /* forms */
+  label{display:block;font-size:12px;color:var(--slate);margin:10px 0 4px;}
+  input,select,textarea{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid #D9D2BE;
+    background:#FFFDF8;
+    font-size:15px;
+    font-family:var(--font-body);
+    color:var(--ink);
+  }
+  input[type=number]{font-family:var(--font-mono);}
+  .seg{display:flex;gap:8px;margin-top:6px;}
+  .seg button{
+    flex:1;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #D9D2BE;
+    background:#FFFDF8;
+    font-size:14px;
+    font-weight:600;
+    color:var(--slate);
+  }
+  .seg button.active.in{background:var(--emerald);border-color:var(--emerald);color:#fff;}
+  .seg button.active.out{background:var(--rust);border-color:var(--rust);color:#fff;}
+  #summaryCurSeg button.active{background:var(--ink);border-color:var(--ink);color:var(--gold);}
+  .btn-primary{
+    margin-top:16px;
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:12px;
+    background:var(--ink);
+    color:var(--gold);
+    font-size:15px;
+    font-weight:700;
+    font-family:var(--font-display);
+    letter-spacing:0.3px;
+  }
+  .btn-secondary{
+    width:100%;
+    padding:11px;
+    border:1px solid var(--ink);
+    border-radius:12px;
+    background:transparent;
+    color:var(--ink);
+    font-size:14px;
+    font-weight:600;
+    margin-top:8px;
+  }
+  .btn-ghost{
+    border:none;background:none;color:var(--slate);font-size:12px;text-decoration:underline;padding:4px;
+  }
+
+  /* transaction list rows */
+  .txn-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 4px;
+    border-bottom:1px dashed var(--line);
+  }
+  .txn-row:last-child{border-bottom:none;}
+  .txn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .txn-dot.in{background:var(--emerald);}
+  .txn-dot.out{background:var(--rust);}
+  .txn-main{flex:1;min-width:0;}
+  .txn-cat{font-size:13.5px;font-weight:600;}
+  .txn-sub{font-size:11px;color:var(--slate);}
+  .txn-amt{font-family:var(--font-mono);font-weight:700;font-size:14px;white-space:nowrap;}
+  .txn-amt.in{color:var(--emerald);}
+  .txn-amt.out{color:var(--rust);}
+  .txn-del{color:var(--slate);font-size:16px;padding:2px 6px;}
+
+  .filter-row{display:flex;gap:8px;margin-bottom:10px;}
+  .filter-row select{font-size:13px;padding:8px 10px;}
+
+  /* summary bars */
+  .bar-row{margin-bottom:10px;}
+  .bar-label{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px;}
+  .bar-track{height:8px;border-radius:5px;background:#EFE9D8;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:5px;}
+  .bar-fill.exp{background:var(--rust);}
+  .bar-fill.inc{background:var(--emerald);}
+
+  /* purchase list */
+  .purchase-row{
+    display:flex;align-items:center;gap:10px;
+    padding:11px 4px;border-bottom:1px dashed var(--line);
+  }
+  .purchase-row:last-child{border-bottom:none;}
+  .purchase-row input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald);flex-shrink:0;}
+  .purchase-row .pname{flex:1;font-size:14.5px;}
+  .purchase-row.done .pname{text-decoration:line-through;color:var(--slate);}
+  .purchase-row .pprice{font-family:var(--font-mono);font-size:13px;color:var(--slate);}
+
+  /* bottom nav */
+  nav.bottom{
+    position:fixed;bottom:0;left:0;right:0;
+    background:var(--ink);
+    display:flex;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    z-index:10;
+    box-shadow:0 -2px 10px rgba(0,0,0,0.15);
+  }
+  nav.bottom button{
+    flex:1;background:none;border:none;color:#8A93A8;
+    font-size:10px;padding:8px 2px 4px;font-family:var(--font-body);
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+  }
+  nav.bottom button .ic{font-size:18px;}
+  nav.bottom button.active{color:var(--gold);}
+
+  .empty{
+    text-align:center;color:var(--slate);font-size:13px;padding:26px 10px;
+  }
+  .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .month-nav button{background:var(--card);border:1px solid #D9D2BE;border-radius:10px;padding:8px 12px;font-size:16px;}
+  .month-nav .mlabel{font-family:var(--font-display);font-size:16px;}
+
+  .acct-edit-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .acct-edit-row input{flex:1;}
+  .acct-edit-row .seal{width:36px;height:36px;font-size:9px;}
+
+  .toast{
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--gold);padding:9px 18px;border-radius:20px;
+    font-size:13px;z-index:50;opacity:0;transition:opacity 0.25s;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>My Ledger</h1>
+  <p id="headerSub">personal accounts &middot; offline</p>
+</header>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section class="tab-panel active" id="tab-dashboard">
+    <div class="totals-row" id="totalsRow"></div>
+
+    <div class="section-title">Accounts</div>
+    <div id="acctList"></div>
+
+    <div class="section-title">Recent activity</div>
+    <div class="card" id="recentTxns"></div>
+  </section>
+
+  <!-- ADD TRANSACTION -->
+  <section class="tab-panel" id="tab-add">
+    <div class="section-title" id="entryFormTitle">New entry</div>
+    <div class="card">
+      <div class="seg" id="dirSeg">
+        <button type="button" class="in" data-dir="in">Money In</button>
+        <button type="button" class="out" data-dir="out">Money Out</button>
+      </div>
+
+      <label>Account</label>
+      <select id="fAccount"></select>
+
+      <label>Category</label>
+      <select id="fCategory"></select>
+
+      <div id="loanPersonBlock" style="display:none;">
+        <label id="loanPersonLabel">Person's name</label>
+        <input type="text" id="fLoanPerson" placeholder="e.g. Ruzain">
+      </div>
+
+      <label>Amount</label>
+      <input type="number" id="fAmount" inputmode="decimal" placeholder="0.00">
+
+      <label>Date</label>
+      <input type="date" id="fDate">
+
+      <label>Note (optional)</label>
+      <input type="text" id="fNote" placeholder="e.g. July salary">
+
+      <button class="btn-primary" id="saveTxnBtn">Save entry</button>
+      <button class="btn-secondary" id="deleteTxnBtn" style="display:none;border-color:var(--rust);color:var(--rust);">Delete this entry</button>
+      <button class="btn-ghost" id="cancelEditBtn" style="display:none;">Cancel edit</button>
+    </div>
+
+    <div class="section-title">Move money between accounts</div>
+    <div class="card">
+      <label>From account</label>
+      <select id="tFrom"></select>
+      <label>To account</label>
+      <select id="tTo"></select>
+      <label id="tAmountLabel">Amount</label>
+      <input type="number" id="tAmount" inputmode="decimal" placeholder="0.00">
+
+      <div id="rateBlock" style="display:none;">
+        <label id="rateLabel">Exchange rate</label>
+        <input type="number" id="tRate" inputmode="decimal" placeholder="e.g. 90" step="0.0001">
+        <div id="ratePreview" style="font-size:12.5px;color:var(--slate);margin-top:6px;font-family:var(--font-mono);"></div>
+      </div>
+
+      <label>Date</label>
+      <input type="date" id="tDate">
+      <button class="btn-secondary" id="saveTransferBtn">Record transfer</button>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="tab-panel" id="tab-history">
+    <div class="section-title">All entries</div>
+    <div class="filter-row">
+      <select id="filterAccount"><option value="">All accounts</option></select>
+      <select id="filterType">
+        <option value="">All types</option>
+        <option value="in">Money in</option>
+        <option value="out">Money out</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <select id="filterCategory" style="width:100%;"><option value="">All categories</option></select>
+    </div>
+    <div class="filter-row">
+      <input type="date" id="filterFrom" style="flex:1;">
+      <input type="date" id="filterTo" style="flex:1;">
+    </div>
+    <div class="filter-row" id="filterDateClearRow" style="display:none;">
+      <button class="btn-ghost" id="clearDateFilter">Clear date range</button>
+    </div>
+    <div id="historySubtotal"></div>
+    <div class="card" id="historyList"></div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="tab-panel" id="tab-summary">
+    <div class="month-nav">
+      <button id="prevMonth">‹</button>
+      <div class="mlabel" id="monthLabel"></div>
+      <button id="nextMonth">›</button>
+    </div>
+
+    <div id="summaryCashflow"></div>
+
+    <div class="section-title">Expenses by category</div>
+    <div class="card" id="expByCat"><div class="empty">No expenses this month</div></div>
+
+    <div class="section-title">Income by category</div>
+    <div class="card" id="incByCat"><div class="empty">No income this month</div></div>
+  </section>
+
+  <!-- LOANS -->
+  <section class="tab-panel" id="tab-loans">
+    <div class="section-title">Owed to you</div>
+    <div class="card" id="loansOwedToYou"><div class="empty">No one owes you right now</div></div>
+
+    <div class="section-title">You owe</div>
+    <div class="card" id="loansYouOwe"><div class="empty">You don't owe anyone right now</div></div>
+  </section>
+
+  <!-- PURCHASES -->
+  <section class="tab-panel" id="tab-purchases">
+    <div class="section-title">Add item</div>
+    <div class="card">
+      <label>Item name</label>
+      <input type="text" id="pName" placeholder="e.g. New laptop">
+      <label>Estimated price (optional)</label>
+      <input type="number" id="pPrice" inputmode="decimal" placeholder="0.00">
+      <button class="btn-primary" id="addPurchaseBtn">Add to list</button>
+    </div>
+
+    <div class="section-title">To buy</div>
+    <div class="card" id="purchasePending"></div>
+
+    <div class="section-title">Purchased</div>
+    <div class="card" id="purchaseDone"></div>
+  </section>
+
+  <!-- MORE / ACCOUNTS / BACKUP -->
+  <section class="tab-panel" id="tab-more">
+    <div class="section-title">Manage accounts</div>
+    <div class="card" id="acctEditList"></div>
+
+    <div class="section-title">Expense categories</div>
+    <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px 16px;">
+      <input type="checkbox" id="sortCatsToggle" style="width:20px;height:20px;accent-color:var(--emerald);">
+      <label for="sortCatsToggle" style="margin:0;font-size:13px;color:var(--ink);">Sort categories A–Z</label>
+    </div>
+    <div class="card">
+      <div id="expCatEditList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="newExpCat" placeholder="New expense category" style="flex:1;">
+        <button class="btn-secondary" id="addExpCatBtn" style="width:auto;margin-top:0;padding:10px 16px;">Add</button>
+      </div>
+    </div>
+
+    <div class="section-title">Income categories</div>
+    <div class="card">
+      <div id="incCatEditList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="newIncCat" placeholder="New income category" style="flex:1;">
+        <button class="btn-secondary" id="addIncCatBtn" style="width:auto;margin-top:0;padding:10px 16px;">Add</button>
+      </div>
+    </div>
+
+    <div class="section-title">Bin <span id="binCount" style="font-family:var(--font-mono);font-size:12px;color:var(--slate);"></span></div>
+    <div class="card" style="font-size:12px;color:var(--slate);padding:10px 16px;">
+      Deleted entries stay here until you restore them or empty the bin. They're excluded from balances and reports.
+    </div>
+    <div class="card" id="binList"></div>
+
+    <div class="section-title">Backup &amp; restore</div>
+    <div class="card">
+      <p style="font-size:12.5px;color:var(--slate);margin:0 0 10px;">
+        All data stays only on this device. Export a backup file regularly, especially before clearing browser data or switching phones.
+      </p>
+      <button class="btn-primary" id="exportBtn">Export backup (.json)</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;">
+      <button class="btn-secondary" id="importBtn">Import backup</button>
+    </div>
+
+    <div class="section-title">Install as app</div>
+    <div class="card" style="font-size:12.5px;color:var(--slate);">
+      <b style="color:var(--ink);">iPhone (Safari):</b> tap Share → Add to Home Screen.<br><br>
+      <b style="color:var(--ink);">Android (Chrome):</b> tap ⋮ menu → Add to Home screen / Install app.<br><br>
+      Once added, it opens full-screen like a normal app, without the browser bar, and works with no internet connection.
+    </div>
+  </section>
+
+</main>
+
+<nav class="bottom">
+  <button data-tab="dashboard" class="active"><span class="ic">🏠</span>Home</button>
+  <button data-tab="add"><span class="ic">➕</span>Add</button>
+  <button data-tab="history"><span class="ic">📜</span>History</button>
+  <button data-tab="summary"><span class="ic">📊</span>Summary</button>
+  <button data-tab="loans"><span class="ic">🤝</span>Loans</button>
+  <button data-tab="purchases"><span class="ic">☑️</span>Buy list</button>
+  <button data-tab="more"><span class="ic">⚙️</span>More</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- DATA MODEL ---------- */
+const STORAGE_KEY = 'personal_ledger_v1';
+
+const DEFAULT_EXPENSE_CATS = ['Remittance','Food Expenses','Travel Expenses','Personal Expenses','Room Rent','Charity','Loan','Loan Repayment','Investment','Family Expenses','Bank Charges','Other Expenses'];
+const DEFAULT_INCOME_CATS  = ['Salary','Investment Profit','Dividend','Loan Taken','Loan Return','Bank Profit','Other Income'];
+const LOAN_CATS = ['Loan','Loan Repayment','Loan Taken','Loan Return'];
+
+function defaultData(){
+  return {
+    accounts: [
+      {id:'lkr1', name:'LKR Bank 1', currency:'LKR', type:'bank'},
+      {id:'lkr2', name:'LKR Bank 2', currency:'LKR', type:'bank'},
+      {id:'lkr3', name:'LKR Bank 3', currency:'LKR', type:'bank'},
+      {id:'lkr4', name:'LKR Bank 4', currency:'LKR', type:'bank'},
+      {id:'aed1', name:'AED Bank 1', currency:'AED', type:'bank'},
+      {id:'aed2', name:'AED Bank 2', currency:'AED', type:'bank'},
+      {id:'cashLKR', name:'LKR Cash in Hand', currency:'LKR', type:'cash'},
+      {id:'cashAED', name:'AED Cash in Hand', currency:'AED', type:'cash'},
+    ],
+    transactions: [],
+    purchases: [],
+    categories: {
+      expense: [...DEFAULT_EXPENSE_CATS],
+      income: [...DEFAULT_INCOME_CATS]
+    },
+    settings: {
+      sortCategoriesAZ: false
+    }
+  };
+}
+
+let data = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultData();
+    const parsed = JSON.parse(raw);
+    if(!parsed.accounts || !parsed.transactions || !parsed.purchases) return defaultData();
+    migrateOldCashAccount(parsed);
+    migrateCategories(parsed);
+    return parsed;
+  }catch(e){
+    return defaultData();
+  }
+}
+
+// Older versions had categories hardcoded in the code instead of saved data.
+function migrateCategories(d){
+  if(!d.categories){
+    d.categories = { expense: [...DEFAULT_EXPENSE_CATS], income: [...DEFAULT_INCOME_CATS] };
+  }
+  if(!d.categories.expense) d.categories.expense = [...DEFAULT_EXPENSE_CATS];
+  if(!d.categories.income) d.categories.income = [...DEFAULT_INCOME_CATS];
+  // make sure the loan categories that power the Loans tab always exist
+  LOAN_CATS.forEach(c=>{
+    const isExpense = (c==='Loan' || c==='Loan Repayment');
+    const list = isExpense ? d.categories.expense : d.categories.income;
+    if(!list.includes(c)) list.push(c);
+  });
+  if(!d.settings) d.settings = { sortCategoriesAZ: false };
+  if(typeof d.settings.sortCategoriesAZ !== 'boolean') d.settings.sortCategoriesAZ = false;
+}
+
+// Returns a category list, alphabetically sorted if the user has that setting on.
+function sortedCats(list){
+  return data.settings.sortCategoriesAZ ? [...list].sort((a,b)=> a.localeCompare(b)) : list;
+}
+
+// Older versions had one generic "Cash on Hand" account (currency CASH).
+// Convert it to LKR Cash in Hand (keeping its history) and add an AED Cash in Hand account.
+function migrateOldCashAccount(d){
+  const oldCash = d.accounts.find(a=>a.currency==='CASH');
+  if(oldCash){
+    oldCash.name = 'LKR Cash in Hand';
+    oldCash.currency = 'LKR';
+    oldCash.type = 'cash';
+  }
+  d.accounts.forEach(a=>{ if(!a.type) a.type = 'bank'; });
+  if(!d.accounts.find(a=>a.id==='cashAED')){
+    d.accounts.push({id:'cashAED', name:'AED Cash in Hand', currency:'AED', type:'cash'});
+  }
+  if(!d.accounts.find(a=>a.type==='cash' && a.currency==='LKR')){
+    d.accounts.push({id:'cashLKR', name:'LKR Cash in Hand', currency:'LKR', type:'cash'});
+  }
+}
+
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function fmt(n){
+  const num = Number(n)||0;
+  return num.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function acctById(id){ return data.accounts.find(a=>a.id===id); }
+
+// Soft-deleted transactions are kept (in the bin) but excluded from every balance/list/report.
+function activeTxns(){ return data.transactions.filter(t=>!t.deletedAt); }
+function deletedTxns(){ return data.transactions.filter(t=>t.deletedAt); }
+
+function acctBalance(id){
+  return activeTxns()
+    .filter(t=>t.accountId===id)
+    .reduce((sum,t)=> sum + (t.direction==='in'? Number(t.amount): -Number(t.amount)), 0);
+}
+
+/* ---------- TAB NAV ---------- */
+document.querySelectorAll('nav.bottom button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='summary') renderSummary();
+    if(btn.dataset.tab==='loans') renderLoans();
+    if(btn.dataset.tab==='add') resetEntryForm();
+  });
+});
+
+/* ---------- DASHBOARD ---------- */
+function renderDashboard(){
+  // totals per currency (bank + cash combined)
+  const totals = {LKR:0, AED:0};
+  data.accounts.forEach(a=>{ totals[a.currency] += acctBalance(a.id); });
+
+  const totalsRow = document.getElementById('totalsRow');
+  totalsRow.innerHTML = `
+    <div class="total-chip"><div class="lbl">LKR Total</div><div class="amt">${fmt(totals.LKR)}</div></div>
+    <div class="total-chip"><div class="lbl">AED Total</div><div class="amt">${fmt(totals.AED)}</div></div>
+  `;
+
+  const acctList = document.getElementById('acctList');
+  acctList.innerHTML = data.accounts.map(a=>{
+    const bal = acctBalance(a.id);
+    return `<div class="passbook">
+      <div class="seal ${a.currency}${a.type==='cash'?' cash-seal':''}">${a.currency}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(a.name)}</div>
+        <div class="sub">${a.type==='cash'?'cash on hand':'bank account'}</div>
+      </div>
+      <div class="bal ${bal<0?'neg':''}">${fmt(bal)}</div>
+    </div>`;
+  }).join('');
+
+  const recent = [...activeTxns()].sort((a,b)=> b.date.localeCompare(a.date) || 0).slice(0,8);
+  const recentEl = document.getElementById('recentTxns');
+  if(recent.length===0){
+    recentEl.innerHTML = '<div class="empty">No entries yet. Tap Add to record your first transaction.</div>';
+  } else {
+    recentEl.innerHTML = recent.map(t=>txnRowHtml(t)).join('');
+    attachDeleteHandlers(recentEl);
+    attachEditHandlers(recentEl);
+  }
+}
+
+function txnRowHtml(t){
+  const acc = acctById(t.accountId);
+  return `<div class="txn-row" data-id="${t.id}">
+    <div class="txn-dot ${t.direction}"></div>
+    <div class="txn-main">
+      <div class="txn-cat">${escapeHtml(t.category)}${t.personName? ' — '+escapeHtml(t.personName):''}</div>
+      <div class="txn-sub">${acc? escapeHtml(acc.name):'—'} &middot; ${t.date}${t.note? ' &middot; '+escapeHtml(t.note):''}</div>
+    </div>
+    <div class="txn-amt ${t.direction}">${t.direction==='in'?'+':'−'}${fmt(t.amount)}</div>
+    <button class="txn-del" data-edit="${t.id}">✎</button>
+    <button class="txn-del" data-del="${t.id}">✕</button>
+  </div>`;
+}
+
+function attachEditHandlers(container){
+  container.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=> startEditTxn(btn.dataset.edit));
+  });
+}
+
+function attachDeleteHandlers(container){
+  container.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(confirm('Move this entry to the bin? You can restore it later from More \u2192 Bin.')){
+        softDeleteTxn(btn.dataset.del);
+        save();
+        renderAll();
+        toast('Moved to bin');
+      }
+    });
+  });
+}
+
+function softDeleteTxn(id){
+  const t = data.transactions.find(x=>x.id===id);
+  if(!t) return;
+  const now = new Date().toISOString();
+  t.deletedAt = now;
+  // a transfer has two linked legs — bin and restore them together so balances stay consistent
+  if(t.transferId){
+    data.transactions.forEach(x=>{
+      if(x.transferId===t.transferId && x.id!==t.id) x.deletedAt = now;
+    });
+  }
+}
+
+function restoreTxn(id){
+  const t = data.transactions.find(x=>x.id===id);
+  if(!t) return;
+  delete t.deletedAt;
+  if(t.transferId){
+    data.transactions.forEach(x=>{
+      if(x.transferId===t.transferId && x.id!==t.id) delete x.deletedAt;
+    });
+  }
+}
+
+function permanentlyDeleteTxn(id){
+  const t = data.transactions.find(x=>x.id===id);
+  if(!t) return;
+  if(t.transferId){
+    data.transactions = data.transactions.filter(x=> x.transferId!==t.transferId);
+  } else {
+    data.transactions = data.transactions.filter(x=> x.id!==id);
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- ADD TRANSACTION ---------- */
+let currentDir = 'in';
+let editingTxnId = null;
+
+function startEditTxn(id){
+  const t = data.transactions.find(x=>x.id===id);
+  if(!t) return;
+  if(t.category==='Transfer'){ toast('Transfers can only be deleted, not edited'); return; }
+
+  editingTxnId = id;
+  currentDir = t.direction;
+  document.querySelectorAll('#dirSeg button').forEach(b=>b.classList.toggle('active', b.dataset.dir===currentDir));
+  populateCategorySelect();
+
+  document.getElementById('fAccount').value = t.accountId;
+  document.getElementById('fCategory').value = t.category;
+  document.getElementById('fAmount').value = t.amount;
+  document.getElementById('fDate').value = t.date;
+  document.getElementById('fNote').value = t.note || '';
+  document.getElementById('fLoanPerson').value = t.personName || '';
+  updateLoanPersonUI();
+
+  document.getElementById('entryFormTitle').textContent = 'Edit entry';
+  document.getElementById('saveTxnBtn').textContent = 'Update entry';
+  document.getElementById('deleteTxnBtn').style.display = 'block';
+  document.getElementById('cancelEditBtn').style.display = 'block';
+
+  document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.remove('active'));
+  document.querySelector('nav.bottom button[data-tab="add"]').classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-add').classList.add('active');
+}
+
+function resetEntryForm(){
+  editingTxnId = null;
+  document.getElementById('entryFormTitle').textContent = 'New entry';
+  document.getElementById('saveTxnBtn').textContent = 'Save entry';
+  document.getElementById('deleteTxnBtn').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fNote').value = '';
+  document.getElementById('fLoanPerson').value = '';
+  updateLoanPersonUI();
+  setDefaultDates();
+}
+
+document.getElementById('cancelEditBtn').addEventListener('click', resetEntryForm);
+
+document.getElementById('deleteTxnBtn').addEventListener('click', ()=>{
+  if(!editingTxnId) return;
+  if(confirm('Move this entry to the bin? You can restore it later from More \u2192 Bin.')){
+    softDeleteTxn(editingTxnId);
+    save();
+    resetEntryForm();
+    renderAll();
+    toast('Moved to bin');
+  }
+});
+
+function populateAccountSelects(){
+  const opts = data.accounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)} (${a.currency})</option>`).join('');
+  ['fAccount','tFrom','tTo','filterAccount'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const keepFirst = id==='filterAccount' ? '<option value="">All accounts</option>' : '';
+    sel.innerHTML = keepFirst + opts;
+  });
+}
+
+function populateFilterCategorySelect(){
+  const sel = document.getElementById('filterCategory');
+  const prev = sel.value;
+  const allCats = ['Transfer', ...sortedCats(data.categories.expense), ...sortedCats(data.categories.income)];
+  sel.innerHTML = '<option value="">All categories</option>' +
+    allCats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  sel.value = prev;
+}
+
+function populateCategorySelect(){
+  const cats = sortedCats(currentDir==='in' ? data.categories.income : data.categories.expense);
+  document.getElementById('fCategory').innerHTML = cats.map(c=>`<option>${c}</option>`).join('');
+  updateLoanPersonUI();
+}
+
+const LOAN_LABELS = {
+  'Loan': "Given to (person's name)",
+  'Loan Repayment': "Repaid to (person's name)",
+  'Loan Taken': "Borrowed from (person's name)",
+  'Loan Return': "Received from (person's name)"
+};
+
+function updateLoanPersonUI(){
+  const cat = document.getElementById('fCategory').value;
+  const block = document.getElementById('loanPersonBlock');
+  if(LOAN_CATS.includes(cat)){
+    block.style.display = 'block';
+    document.getElementById('loanPersonLabel').textContent = LOAN_LABELS[cat];
+  } else {
+    block.style.display = 'none';
+  }
+}
+
+document.getElementById('fCategory').addEventListener('change', updateLoanPersonUI);
+
+document.getElementById('dirSeg').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  currentDir = btn.dataset.dir;
+  document.querySelectorAll('#dirSeg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  populateCategorySelect();
+});
+
+document.getElementById('saveTxnBtn').addEventListener('click', ()=>{
+  const accountId = document.getElementById('fAccount').value;
+  const category = document.getElementById('fCategory').value;
+  const amount = parseFloat(document.getElementById('fAmount').value);
+  const date = document.getElementById('fDate').value;
+  const note = document.getElementById('fNote').value.trim();
+  const personName = document.getElementById('fLoanPerson').value.trim();
+
+  if(!accountId){ toast('Choose an account'); return; }
+  if(!amount || amount<=0){ toast('Enter a valid amount'); return; }
+  if(!date){ toast('Choose a date'); return; }
+  if(LOAN_CATS.includes(category) && !personName){ toast("Enter the person's name"); return; }
+
+  if(editingTxnId){
+    const t = data.transactions.find(x=>x.id===editingTxnId);
+    t.accountId = accountId;
+    t.direction = currentDir;
+    t.category = category;
+    t.amount = amount;
+    t.date = date;
+    t.note = note;
+    t.personName = LOAN_CATS.includes(category) ? personName : undefined;
+    save();
+    resetEntryForm();
+    toast('Entry updated');
+    renderAll();
+    return;
+  }
+
+  data.transactions.push({id:uid(), accountId, direction:currentDir, category, amount, date, note, personName: LOAN_CATS.includes(category) ? personName : undefined});
+  save();
+  document.getElementById('fAmount').value='';
+  document.getElementById('fNote').value='';
+  document.getElementById('fLoanPerson').value='';
+  toast('Saved');
+  renderAll();
+});
+
+function updateTransferRateUI(){
+  const from = document.getElementById('tFrom').value;
+  const to = document.getElementById('tTo').value;
+  const fromAcc = acctById(from), toAcc = acctById(to);
+  const rateBlock = document.getElementById('rateBlock');
+  if(!fromAcc || !toAcc || fromAcc.currency===toAcc.currency){
+    rateBlock.style.display = 'none';
+    document.getElementById('tAmountLabel').textContent = 'Amount';
+    return;
+  }
+  rateBlock.style.display = 'block';
+  document.getElementById('tAmountLabel').textContent = `Amount (in ${fromAcc.currency})`;
+  document.getElementById('rateLabel').textContent = `Rate: 1 ${fromAcc.currency} = ? ${toAcc.currency}`;
+  updateRatePreview();
+}
+
+function updateRatePreview(){
+  const from = document.getElementById('tFrom').value;
+  const to = document.getElementById('tTo').value;
+  const fromAcc = acctById(from), toAcc = acctById(to);
+  const preview = document.getElementById('ratePreview');
+  if(!fromAcc || !toAcc || fromAcc.currency===toAcc.currency){ preview.textContent=''; return; }
+  const amount = parseFloat(document.getElementById('tAmount').value) || 0;
+  const rate = parseFloat(document.getElementById('tRate').value) || 0;
+  if(amount>0 && rate>0){
+    preview.textContent = `${fmt(amount)} ${fromAcc.currency}  →  ${fmt(amount*rate)} ${toAcc.currency} deposited`;
+  } else {
+    preview.textContent = '';
+  }
+}
+
+['tFrom','tTo'].forEach(id=> document.getElementById(id).addEventListener('change', updateTransferRateUI));
+['tAmount','tRate'].forEach(id=> document.getElementById(id).addEventListener('input', updateRatePreview));
+
+document.getElementById('saveTransferBtn').addEventListener('click', ()=>{
+  const from = document.getElementById('tFrom').value;
+  const to = document.getElementById('tTo').value;
+  const amount = parseFloat(document.getElementById('tAmount').value);
+  const date = document.getElementById('tDate').value;
+
+  if(from===to){ toast('Pick two different accounts'); return; }
+  if(!amount || amount<=0){ toast('Enter a valid amount'); return; }
+  if(!date){ toast('Choose a date'); return; }
+
+  const fromAcc = acctById(from), toAcc = acctById(to);
+  let toAmount = amount;
+  let rateNote = '';
+
+  if(fromAcc.currency !== toAcc.currency){
+    const rate = parseFloat(document.getElementById('tRate').value);
+    if(!rate || rate<=0){ toast('Enter the exchange rate'); return; }
+    toAmount = amount * rate;
+    rateNote = ` @ rate ${rate}`;
+  }
+
+  const transferId = uid();
+  data.transactions.push({id:uid(), accountId:from, direction:'out', category:'Transfer', amount, date, note:'To '+toAcc.name+rateNote, transferId});
+  data.transactions.push({id:uid(), accountId:to, direction:'in', category:'Transfer', amount:toAmount, date, note:'From '+fromAcc.name+rateNote, transferId});
+  save();
+  document.getElementById('tAmount').value='';
+  document.getElementById('tRate').value='';
+  document.getElementById('ratePreview').textContent='';
+  toast('Transfer recorded');
+  renderAll();
+});
+
+/* ---------- HISTORY ---------- */
+function renderHistory(){
+  const accF = document.getElementById('filterAccount').value;
+  const typeF = document.getElementById('filterType').value;
+  const catF = document.getElementById('filterCategory').value;
+  const fromF = document.getElementById('filterFrom').value;
+  const toF = document.getElementById('filterTo').value;
+
+  document.getElementById('filterDateClearRow').style.display = (fromF || toF) ? 'flex' : 'none';
+
+  let list = [...activeTxns()].sort((a,b)=> b.date.localeCompare(a.date));
+  if(accF) list = list.filter(t=>t.accountId===accF);
+  if(typeF) list = list.filter(t=>t.direction===typeF);
+  if(catF) list = list.filter(t=>t.category===catF);
+  if(fromF) list = list.filter(t=>t.date >= fromF);
+  if(toF) list = list.filter(t=>t.date <= toF);
+
+  const el = document.getElementById('historyList');
+  if(list.length===0){
+    el.innerHTML = '<div class="empty">No entries match this filter.</div>';
+  } else {
+    el.innerHTML = list.map(t=>txnRowHtml(t)).join('');
+    attachDeleteHandlers(el);
+    attachEditHandlers(el);
+  }
+
+  renderHistorySubtotal(list);
+}
+
+function renderHistorySubtotal(list){
+  const sub = document.getElementById('historySubtotal');
+  if(list.length===0){ sub.innerHTML = ''; return; }
+
+  // per currency, per direction totals — never mixed together
+  const totals = {LKR:{in:0,out:0}, AED:{in:0,out:0}};
+  list.forEach(t=>{
+    const acc = acctById(t.accountId);
+    if(!acc) return;
+    totals[acc.currency][t.direction] += Number(t.amount);
+  });
+
+  const chips = ['LKR','AED'].map(cur=>{
+    const inAmt = totals[cur].in, outAmt = totals[cur].out;
+    if(inAmt===0 && outAmt===0) return '';
+    const parts = [];
+    if(inAmt>0) parts.push(`<span style="color:var(--emerald);">+${fmt(inAmt)}</span>`);
+    if(outAmt>0) parts.push(`<span style="color:var(--rust);">−${fmt(outAmt)}</span>`);
+    return `<div class="total-chip"><div class="lbl">${cur} subtotal</div><div class="amt" style="font-size:14px;">${parts.join(' &nbsp; ')}</div></div>`;
+  }).join('');
+
+  sub.innerHTML = `<div class="totals-row">${chips}</div>`;
+}
+
+document.getElementById('filterCategory').addEventListener('change', renderHistory);
+document.getElementById('filterAccount').addEventListener('change', renderHistory);
+document.getElementById('filterType').addEventListener('change', renderHistory);
+document.getElementById('filterFrom').addEventListener('change', renderHistory);
+document.getElementById('filterTo').addEventListener('change', renderHistory);
+document.getElementById('clearDateFilter').addEventListener('click', ()=>{
+  document.getElementById('filterFrom').value = '';
+  document.getElementById('filterTo').value = '';
+  renderHistory();
+});
+
+/* ---------- SUMMARY ---------- */
+let summaryMonth = new Date().getMonth();
+let summaryYear = new Date().getFullYear();
+
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  summaryMonth--; if(summaryMonth<0){summaryMonth=11; summaryYear--;}
+  renderSummary();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  summaryMonth++; if(summaryMonth>11){summaryMonth=0; summaryYear++;}
+  renderSummary();
+});
+
+function renderSummary(){
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthLabel').textContent = monthNames[summaryMonth]+' '+summaryYear;
+
+  const inMonth = activeTxns().filter(t=>{
+    const d = new Date(t.date+'T00:00:00');
+    return d.getMonth()===summaryMonth && d.getFullYear()===summaryYear && t.category!=='Transfer';
+  });
+
+  const byCurrency = {LKR:{in:0,out:0}, AED:{in:0,out:0}};
+  inMonth.forEach(t=>{
+    const acc = acctById(t.accountId);
+    if(!acc) return;
+    byCurrency[acc.currency][t.direction] += Number(t.amount);
+  });
+
+  const cashflowEl = document.getElementById('summaryCashflow');
+  cashflowEl.innerHTML = ['LKR','AED'].map(cur=>{
+    const inAmt = byCurrency[cur].in, outAmt = byCurrency[cur].out;
+    const net = inAmt - outAmt;
+    if(inAmt===0 && outAmt===0) return '';
+    return `<div class="card">
+      <div class="section-title" style="margin:0 0 8px;">${cur} (bank + cash)</div>
+      <div class="txn-row" style="border:none;padding:2px 0;">
+        <div class="txn-main"><div class="txn-cat">Money in</div></div>
+        <div class="txn-amt in">+${fmt(inAmt)}</div>
+      </div>
+      <div class="txn-row" style="border:none;padding:2px 0;">
+        <div class="txn-main"><div class="txn-cat">Money out</div></div>
+        <div class="txn-amt out">−${fmt(outAmt)}</div>
+      </div>
+      <div class="txn-row" style="border-top:1px dashed var(--line);padding-top:8px;margin-top:4px;">
+        <div class="txn-main"><div class="txn-cat">Net</div></div>
+        <div class="txn-amt ${net<0?'out':'in'}">${fmt(net)}</div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="card"><div class="empty">No activity this month</div></div>';
+
+  renderCatBreakdown('expByCat', inMonth.filter(t=> t.direction==='out'), data.categories.expense, 'exp');
+  renderCatBreakdown('incByCat', inMonth.filter(t=> t.direction==='in'), data.categories.income, 'inc');
+}
+
+function renderCatBreakdown(elId, txns, catList, cls){
+  const el = document.getElementById(elId);
+  if(txns.length===0){ el.innerHTML = '<div class="empty">Nothing recorded this month</div>'; return; }
+
+  // totals[category][currency] = amount, never summed across currencies
+  const totals = {};
+  catList.forEach(c=> totals[c] = {LKR:0, AED:0});
+  txns.forEach(t=>{
+    const acc = acctById(t.accountId);
+    if(!acc) return;
+    totals[t.category][acc.currency] += Number(t.amount);
+  });
+
+  // max per currency, used only to scale that currency's own bar width
+  const maxByCur = {LKR:0, AED:0};
+  catList.forEach(c=>{
+    ['LKR','AED'].forEach(cur=>{
+      if(totals[c][cur] > maxByCur[cur]) maxByCur[cur] = totals[c][cur];
+    });
+  });
+
+  const activeCats = catList
+    .filter(c => totals[c].LKR>0 || totals[c].AED>0)
+    .sort((a,b)=>{
+      const maxB = Math.max(totals[b].LKR, totals[b].AED);
+      const maxA = Math.max(totals[a].LKR, totals[a].AED);
+      return maxB - maxA;
+    });
+
+  el.innerHTML = activeCats.map(c=>{
+    const lines = ['LKR','AED']
+      .filter(cur => totals[c][cur] > 0)
+      .map(cur => `
+        <div class="bar-row" style="margin-bottom:8px;">          <div class="bar-label"><span>${c} <span style="color:var(--slate);font-family:var(--font-mono);font-size:11px;">${cur}</span></span><span style="font-family:var(--font-mono)">${fmt(totals[c][cur])}</span></div>
+          <div class="bar-track"><div class="bar-fill ${cls}" style="width:${(totals[c][cur]/maxByCur[cur]*100).toFixed(0)}%"></div></div>
+        </div>`).join('');
+    return lines;
+  }).join('');
+}
+
+/* ---------- LOANS ---------- */
+function renderLoans(){
+  const loanTxns = activeTxns().filter(t=> LOAN_CATS.includes(t.category) && t.personName);
+
+  // owedToYou[person][currency] = amount they still owe you (Loan given - Loan Return received)
+  // youOwe[person][currency]    = amount you still owe them (Loan Taken - Loan Repayment paid)
+  const owedToYou = {};
+  const youOwe = {};
+
+  loanTxns.forEach(t=>{
+    const acc = acctById(t.accountId);
+    if(!acc) return;
+    const person = t.personName.trim();
+    const cur = acc.currency;
+
+    if(t.category==='Loan'){
+      owedToYou[person] = owedToYou[person] || {};
+      owedToYou[person][cur] = (owedToYou[person][cur]||0) + Number(t.amount);
+    } else if(t.category==='Loan Return'){
+      owedToYou[person] = owedToYou[person] || {};
+      owedToYou[person][cur] = (owedToYou[person][cur]||0) - Number(t.amount);
+    } else if(t.category==='Loan Taken'){
+      youOwe[person] = youOwe[person] || {};
+      youOwe[person][cur] = (youOwe[person][cur]||0) + Number(t.amount);
+    } else if(t.category==='Loan Repayment'){
+      youOwe[person] = youOwe[person] || {};
+      youOwe[person][cur] = (youOwe[person][cur]||0) - Number(t.amount);
+    }
+  });
+
+  renderLoanGroup('loansOwedToYou', owedToYou, 'No one owes you right now');
+  renderLoanGroup('loansYouOwe', youOwe, "You don't owe anyone right now");
+}
+
+function renderLoanGroup(elId, groupData, emptyMsg){
+  const el = document.getElementById(elId);
+  const people = Object.keys(groupData).filter(person=>
+    Object.values(groupData[person]).some(v => Math.abs(v) > 0.001)
+  );
+
+  if(people.length===0){ el.innerHTML = `<div class="empty">${emptyMsg}</div>`; return; }
+
+  el.innerHTML = people.map(person=>{
+    const lines = ['LKR','AED']
+      .filter(cur => Math.abs(groupData[person][cur]||0) > 0.001)
+      .map(cur => `
+        <div class="txn-row" style="border:none;padding:2px 0;">
+          <div class="txn-main"><div class="txn-cat" style="font-weight:400;font-size:12px;color:var(--slate);">${cur}</div></div>
+          <div class="txn-amt in" style="color:var(--ink);">${fmt(groupData[person][cur])}</div>
+        </div>`).join('');
+    return `<div style="padding:8px 4px;border-bottom:1px dashed var(--line);">
+      <div class="txn-cat" style="margin-bottom:2px;">${escapeHtml(person)}</div>
+      ${lines}
+    </div>`;
+  }).join('');
+}
+
+/* ---------- PURCHASES ---------- */
+document.getElementById('addPurchaseBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('pName').value.trim();
+  const price = parseFloat(document.getElementById('pPrice').value) || 0;
+  if(!name){ toast('Enter an item name'); return; }
+  data.purchases.push({id:uid(), name, price, purchased:false, dateAdded:new Date().toISOString().slice(0,10)});
+  save();
+  document.getElementById('pName').value='';
+  document.getElementById('pPrice').value='';
+  toast('Added to list');
+  renderPurchases();
+});
+
+function renderPurchases(){
+  const pending = data.purchases.filter(p=>!p.purchased);
+  const done = data.purchases.filter(p=>p.purchased);
+
+  const rowHtml = (p) => `
+    <div class="purchase-row ${p.purchased?'done':''}" data-id="${p.id}">
+      <input type="checkbox" ${p.purchased?'checked':''} data-toggle="${p.id}">
+      <div class="pname">${escapeHtml(p.name)}</div>
+      ${p.price? `<div class="pprice">${fmt(p.price)}</div>` : ''}
+      <button class="txn-del" data-delp="${p.id}">✕</button>
+    </div>`;
+
+  const pendingEl = document.getElementById('purchasePending');
+  pendingEl.innerHTML = pending.length ? pending.map(rowHtml).join('') : '<div class="empty">Nothing on your list</div>';
+
+  const doneEl = document.getElementById('purchaseDone');
+  doneEl.innerHTML = done.length ? done.map(rowHtml).join('') : '<div class="empty">Nothing purchased yet</div>';
+
+  document.querySelectorAll('[data-toggle]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const p = data.purchases.find(x=>x.id===cb.dataset.toggle);
+      p.purchased = cb.checked;
+      save();
+      renderPurchases();
+    });
+  });
+  document.querySelectorAll('[data-delp]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(confirm('Remove this item?')){
+        data.purchases = data.purchases.filter(p=>p.id!==btn.dataset.delp);
+        save();
+        renderPurchases();
+      }
+    });
+  });
+}
+
+/* ---------- ACCOUNT EDITING ---------- */
+function renderAcctEdit(){
+  const el = document.getElementById('acctEditList');
+  el.innerHTML = data.accounts.map(a=>`
+    <div class="acct-edit-row">
+      <div class="seal ${a.currency}${a.type==='cash'?' cash-seal':''}">${a.currency}</div>
+      <input type="text" value="${escapeHtml(a.name)}" data-rename="${a.id}">
+    </div>`).join('');
+
+  el.querySelectorAll('[data-rename]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const acc = acctById(inp.dataset.rename);
+      acc.name = inp.value.trim() || acc.name;
+      save();
+      renderAll();
+      toast('Account renamed');
+    });
+  });
+}
+
+/* ---------- BIN ---------- */
+function renderBin(){
+  const bin = [...deletedTxns()].sort((a,b)=> (b.deletedAt||'').localeCompare(a.deletedAt||''));
+  document.getElementById('binCount').textContent = bin.length ? `(${bin.length})` : '';
+
+  const el = document.getElementById('binList');
+  if(bin.length===0){
+    el.innerHTML = '<div class="empty">Bin is empty</div>';
+    return;
+  }
+
+  // group transfer legs together so they show/restore as one line
+  const seen = new Set();
+  const rows = [];
+  bin.forEach(t=>{
+    if(seen.has(t.id)) return;
+    if(t.transferId){
+      bin.filter(x=>x.transferId===t.transferId).forEach(x=>seen.add(x.id));
+    } else {
+      seen.add(t.id);
+    }
+    rows.push(t);
+  });
+
+  el.innerHTML = rows.map(t=>{
+    const acc = acctById(t.accountId);
+    const label = t.transferId ? 'Transfer' : t.category + (t.personName? ' — '+escapeHtml(t.personName):'');
+    return `<div class="txn-row">
+      <div class="txn-main">
+        <div class="txn-cat">${label}</div>
+        <div class="txn-sub">${acc? escapeHtml(acc.name):'—'} &middot; ${t.date} &middot; ${fmt(t.amount)}</div>
+      </div>
+      <button class="btn-ghost" data-restore="${t.id}" style="text-decoration:none;color:var(--emerald);font-weight:600;">Restore</button>
+      <button class="txn-del" data-perm-del="${t.id}">✕</button>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('[data-restore]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      restoreTxn(btn.dataset.restore);
+      save();
+      renderAll();
+      toast('Restored');
+    });
+  });
+  el.querySelectorAll('[data-perm-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(confirm('Permanently delete this entry? This cannot be undone.')){
+        permanentlyDeleteTxn(btn.dataset.permDel);
+        save();
+        renderAll();
+        toast('Permanently deleted');
+      }
+    });
+  });
+}
+
+/* ---------- CATEGORY MANAGEMENT ---------- */
+function renderCategoryLists(){
+  document.getElementById('sortCatsToggle').checked = data.settings.sortCategoriesAZ;
+  renderCatEditList('expCatEditList', sortedCats(data.categories.expense));
+  renderCatEditList('incCatEditList', sortedCats(data.categories.income));
+}
+
+document.getElementById('sortCatsToggle').addEventListener('change', (e)=>{
+  data.settings.sortCategoriesAZ = e.target.checked;
+  save();
+  renderAll();
+});
+
+function renderCatEditList(elId, catArray){
+  const el = document.getElementById(elId);
+  if(catArray.length===0){ el.innerHTML = '<div class="empty">No categories yet</div>'; return; }
+
+  el.innerHTML = catArray.map(c=>{
+    const locked = LOAN_CATS.includes(c);
+    return `<div class="txn-row" style="border-bottom:1px dashed var(--line);padding:9px 2px;">
+      <div class="txn-main"><div class="txn-cat" style="font-weight:500;">${escapeHtml(c)}</div></div>
+      ${locked
+        ? `<span style="font-size:11px;color:var(--slate);">used by Loans</span>`
+        : `<button class="txn-del" data-remove-cat="${escapeHtml(c)}" data-list="${elId}">✕</button>`}
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('[data-remove-cat]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cat = btn.dataset.removeCat;
+      const key = btn.dataset.list==='expCatEditList' ? 'expense' : 'income';
+      const inUse = data.transactions.some(t=>t.category===cat);
+      const msg = inUse
+        ? `"${cat}" is used by past entries. It will stay on those, but won't be selectable for new entries. Remove it anyway?`
+        : `Remove the category "${cat}"?`;
+      if(confirm(msg)){
+        data.categories[key] = data.categories[key].filter(c=>c!==cat);
+        save();
+        renderAll();
+        toast('Category removed');
+      }
+    });
+  });
+}
+
+function addCategory(key, inputId){
+  const input = document.getElementById(inputId);
+  const name = input.value.trim();
+  if(!name){ toast('Enter a category name'); return; }
+  const list = data.categories[key];
+  if(list.some(c=>c.toLowerCase()===name.toLowerCase())){ toast('That category already exists'); return; }
+  list.push(name);
+  save();
+  input.value = '';
+  renderAll();
+  toast('Category added');
+}
+
+document.getElementById('addExpCatBtn').addEventListener('click', ()=> addCategory('expense','newExpCat'));
+document.getElementById('addIncCatBtn').addEventListener('click', ()=> addCategory('income','newIncCat'));
+document.getElementById('newExpCat').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addCategory('expense','newExpCat'); });
+document.getElementById('newIncCat').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addCategory('income','newIncCat'); });
+
+/* ---------- BACKUP / RESTORE ---------- */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `ledger-backup-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded');
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.accounts || !parsed.transactions || !parsed.purchases) throw new Error('bad file');
+      if(confirm('This will replace all current data with the backup file. Continue?')){
+        data = parsed;
+        save();
+        renderAll();
+        toast('Backup restored');
+      }
+    }catch(err){
+      alert('This file could not be read as a valid backup.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+});
+
+/* ---------- INIT ---------- */
+function setDefaultDates(){
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('fDate').value = today;
+  document.getElementById('tDate').value = today;
+}
+
+function renderAll(){
+  populateAccountSelects();
+  populateFilterCategorySelect();
+  populateCategorySelect();
+  updateTransferRateUI();
+  renderDashboard();
+  renderHistory();
+  renderPurchases();
+  renderAcctEdit();
+  renderLoans();
+  renderCategoryLists();
+  renderBin();
+}
+
+document.querySelector('#dirSeg button[data-dir="in"]').classList.add('active');
+setDefaultDates();
+renderAll();
+renderSummary();
+</script>
+</body>
+</html>
